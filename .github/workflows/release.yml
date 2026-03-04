@@ -321,6 +321,7 @@ jobs:
     needs:
       - release
       - rebuild-latest-json
+      - upload-checksums
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -430,4 +431,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release edit "v${VERSION}" --draft=false --prerelease=false --latest
+          gh release edit "v${VERSION}" --repo "${GITHUB_REPOSITORY}" --draft=false --prerelease=false --latest
