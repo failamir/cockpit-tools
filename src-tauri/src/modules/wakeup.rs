@@ -54,6 +54,7 @@ struct WakeupUiErrorPayload {
     message: String,
     error_code: Option<i64>,
     validation_url: Option<String>,
+    appeal_url: Option<String>,
     trajectory_id: Option<String>,
     error_message_json: Option<String>,
     step_json: Option<String>,
@@ -749,6 +750,38 @@ async fn resolve_requested_model_for_official_ls(
                         let text = res.text().await.unwrap_or_default();
                         let retryable = status == reqwest::StatusCode::TOO_MANY_REQUESTS
                             || status.as_u16() >= 500;
+
+                        // 对 403 尝试解析 TOS_VIOLATION / VALIDATION_REQUIRED 并编码为结构化错误
+                        if status == reqwest::StatusCode::FORBIDDEN {
+                            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
+                                let details = parsed.get("error").and_then(|e| e.get("details"));
+                                let appeal_url = extract_appeal_url_from_error_details(details);
+                                let validation_url = extract_validation_url_from_error_details(details);
+                                let message = parsed
+                                    .get("error")
+                                    .and_then(|e| e.get("message"))
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or_default()
+                                    .to_string();
+
+                                let detail = GatewayTrajectoryErrorDetail {
+                                    message: if message.is_empty() {
+                                        format!("获取模型列表失败: {}", status)
+                                    } else {
+                                        message
+                                    },
+                                    error_code: Some(403),
+                                    validation_url,
+                                    appeal_url,
+                                    trajectory_id: None,
+                                    error_message_json: text.clone(),
+                                    step_json: String::new(),
+                                };
+                                last_error = Some(encode_wakeup_ui_error_payload(&detail));
+                                break;
+                            }
+                        }
+
                         last_error = Some(format!("获取模型列表失败: {} - {}", status, text));
                         if retryable && attempt < DEFAULT_ATTEMPTS {
                             let delay = get_backoff_delay_ms(attempt + 1);
@@ -934,12 +967,16 @@ struct GatewayTrajectoryErrorDetail {
     message: String,
     error_code: Option<i64>,
     validation_url: Option<String>,
+    appeal_url: Option<String>,
     trajectory_id: Option<String>,
     error_message_json: String,
     step_json: String,
 }
 
-fn classify_gateway_error_kind(error_code: Option<i64>) -> &'static str {
+fn classify_gateway_error_kind(error_code: Option<i64>, appeal_url: &Option<String>) -> &'static str {
+    if error_code == Some(403) && appeal_url.is_some() {
+        return "tos_violation";
+    }
     match error_code {
         Some(403) => "verification_required",
         Some(429) => "quota",
@@ -954,10 +991,11 @@ fn classify_gateway_error_kind(error_code: Option<i64>) -> &'static str {
 fn encode_wakeup_ui_error_payload(detail: &GatewayTrajectoryErrorDetail) -> String {
     let payload = WakeupUiErrorPayload {
         version: 1,
-        kind: classify_gateway_error_kind(detail.error_code).to_string(),
+        kind: classify_gateway_error_kind(detail.error_code, &detail.appeal_url).to_string(),
         message: detail.message.clone(),
         error_code: detail.error_code,
         validation_url: detail.validation_url.clone(),
+        appeal_url: detail.appeal_url.clone(),
         trajectory_id: detail.trajectory_id.clone(),
         error_message_json: Some(detail.error_message_json.clone()),
         step_json: Some(detail.step_json.clone()),
@@ -1074,11 +1112,11 @@ fn extract_gateway_error_from_trajectory(
                 v.as_i64()
                     .or_else(|| v.as_str().and_then(|s| s.parse::<i64>().ok()))
             });
-        let validation_url = extract_validation_url_from_error_details(
-            error_obj
-                .get("details")
-                .or_else(|| error_value.get("details")),
-        );
+        let details_value = error_obj
+            .get("details")
+            .or_else(|| error_value.get("details"));
+        let validation_url = extract_validation_url_from_error_details(details_value);
+        let appeal_url = extract_appeal_url_from_error_details(details_value);
         let error_message_json =
             serde_json::to_string(error_value).unwrap_or_else(|_| "{}".to_string());
         let step_json = serde_json::to_string(step).unwrap_or_else(|_| "{}".to_string());
@@ -1087,6 +1125,7 @@ fn extract_gateway_error_from_trajectory(
             message: msg,
             error_code,
             validation_url,
+            appeal_url,
             trajectory_id: trajectory_id.clone(),
             error_message_json,
             step_json,
@@ -1126,6 +1165,46 @@ fn extract_validation_url_from_error_details(
             .map(str::trim)
             .filter(|v| !v.is_empty());
         if ty == "type.googleapis.com/google.rpc.ErrorInfo" && reason == "VALIDATION_REQUIRED" {
+            if let Some(url) = url {
+                return Some(url.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+fn extract_appeal_url_from_error_details(
+    details: Option<&serde_json::Value>,
+) -> Option<String> {
+    let details = details?;
+    let parsed = match details {
+        serde_json::Value::String(text) => serde_json::from_str::<serde_json::Value>(text).ok()?,
+        other => other.clone(),
+    };
+
+    let error_details = parsed
+        .get("error")
+        .and_then(|v| v.get("details"))
+        .and_then(|v| v.as_array())
+        .or_else(|| parsed.as_array())?;
+
+    for item in error_details {
+        let ty = item
+            .get("@type")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
+        let reason = item
+            .get("reason")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
+        if ty == "type.googleapis.com/google.rpc.ErrorInfo" && reason == "TOS_VIOLATION" {
+            let url = item
+                .get("metadata")
+                .and_then(|v| v.get("appeal_url"))
+                .and_then(|v| v.as_str())
+                .map(str::trim)
+                .filter(|v| !v.is_empty());
             if let Some(url) = url {
                 return Some(url.to_string());
             }

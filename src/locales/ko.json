@@ -847,7 +847,7 @@
         "line1": "지금 점검은 로컬 게이트웨이와 공식 Language Server 프로토콜로 Antigravity 클라이언트를 모사해 최소 대화 요청을 전송합니다.",
         "line2": "이 과정에서 소량의 토큰(일반적으로 짧은 대화 1회)이 소모되며, 실제 소모량은 모델과 계정 정책에 따라 달라집니다.",
         "line3": "이 작업은 깨우기 작업 설정을 변경하지 않으며, 계정 가용성 점검 및 점검 기록 저장만 수행합니다.",
-        "line4": "403이 반환되면 먼저 계정 검증을 완료해야 하며, 결과에 검증 주소와 빠른 작업이 제공됩니다."
+        "line4": "403이 반환되면 계정 인증 또는 이의 제기를 먼저 완료해야 합니다. 결과에 주소와 빠른 작업이 제공됩니다."
       },
       "deleteConfirm": "삭제를 확인하시겠습니까?"
     },
@@ -876,6 +876,9 @@
       "validationUrlLabel": "인증 URL(복사 가능)",
       "completeVerification": "인증 완료",
       "copyValidationUrl": "인증 URL 복사",
+      "tosViolationTitle": "TOS 위반",
+      "submitAppeal": "이의 제기",
+      "copyAppealUrl": "링크 복사",
       "copyDebugInfo": "디버그 정보 복사",
       "errorCode": "오류 코드: {{code}}",
       "trajectoryId": "트래젝터리 ID: {{id}}",

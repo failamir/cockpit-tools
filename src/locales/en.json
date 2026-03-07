@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "confirm": "Confirm",
     "cancel": "Cancel",
@@ -841,7 +841,7 @@
         "line1": "Detect now sends a minimal chat request by simulating Antigravity with a local gateway and the official Language Server protocol.",
         "line2": "This consumes a small amount of tokens (usually one short dialogue). Actual usage depends on model and account policy.",
         "line3": "This operation does not modify wakeup task settings. It only checks account availability and writes detection records.",
-        "line4": "If a 403 is returned, account verification is required first. The result will include the validation URL and quick actions."
+        "line4": "If a 403 is returned, account verification or an appeal submission may be required. The result will include the URL and quick actions."
       },
       "deleteConfirm": "Are you sure you want to delete?"
     },
@@ -870,6 +870,9 @@
       "validationUrlLabel": "Validation URL (copyable)",
       "completeVerification": "Verify now",
       "copyValidationUrl": "Copy validation URL",
+      "tosViolationTitle": "TOS Violation",
+      "submitAppeal": "Submit Appeal",
+      "copyAppealUrl": "Copy Link",
       "copyDebugInfo": "Copy debug info",
       "errorCode": "Error code: {{code}}",
       "trajectoryId": "Trajectory ID: {{id}}",

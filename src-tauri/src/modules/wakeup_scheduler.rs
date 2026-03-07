@@ -625,7 +625,27 @@ async fn run_task_with_models(
                 .num_milliseconds()
                 .max(0) as u64;
             let (success, message) = match result {
-                Ok(resp) => (true, Some(resp.reply)),
+                Ok(resp) => {
+                    // 唤醒成功说明 Token 有效，清除 disabled 和 quota_error
+                    if let Ok(mut acc) = modules::load_account(&account.id) {
+                        let mut changed = false;
+                        if acc.disabled {
+                            modules::logger::log_info(&format!(
+                                "[WakeupScheduler] 唤醒成功，自动解除禁用状态: {}",
+                                acc.email
+                            ));
+                            acc.disabled = false;
+                            acc.disabled_reason = None;
+                            acc.disabled_at = None;
+                            changed = true;
+                        }
+                        if changed {
+                            acc.quota_error = None;
+                            let _ = modules::save_account(&acc);
+                        }
+                    }
+                    (true, Some(resp.reply))
+                }
                 Err(err) => (false, Some(err.to_string())),
             };
             history.push(modules::wakeup_history::WakeupHistoryItem {

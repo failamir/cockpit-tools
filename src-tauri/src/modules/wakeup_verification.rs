@@ -15,6 +15,7 @@ const MAX_HISTORY_BATCHES: usize = 100;
 const STATUS_IDLE: &str = "idle";
 const STATUS_SUCCESS: &str = "success";
 const STATUS_VERIFICATION_REQUIRED: &str = "verification_required";
+const STATUS_TOS_VIOLATION: &str = "tos_violation";
 const STATUS_AUTH_EXPIRED: &str = "auth_expired";
 const STATUS_FAILED: &str = "failed";
 
@@ -32,6 +33,8 @@ pub struct WakeupVerificationStateItem {
     pub last_error_code: Option<i64>,
     pub last_message: Option<String>,
     pub validation_url: Option<String>,
+    #[serde(default)]
+    pub appeal_url: Option<String>,
     pub trajectory_id: Option<String>,
     pub duration_ms: Option<u64>,
 }
@@ -47,6 +50,8 @@ pub struct WakeupVerificationBatchHistoryItem {
     pub completed: usize,
     pub success_count: usize,
     pub verification_required_count: usize,
+    #[serde(default)]
+    pub tos_violation_count: usize,
     pub failed_count: usize,
     pub records: Vec<WakeupVerificationStateItem>,
 }
@@ -59,6 +64,7 @@ pub struct WakeupVerificationProgressPayload {
     pub completed: usize,
     pub success_count: usize,
     pub verification_required_count: usize,
+    pub tos_violation_count: usize,
     pub failed_count: usize,
     pub running: bool,
     pub item: Option<WakeupVerificationStateItem>,
@@ -75,6 +81,7 @@ pub struct WakeupVerificationBatchResult {
     pub completed: usize,
     pub success_count: usize,
     pub verification_required_count: usize,
+    pub tos_violation_count: usize,
     pub failed_count: usize,
     pub records: Vec<WakeupVerificationStateItem>,
 }
@@ -86,6 +93,7 @@ struct WakeupUiErrorPayload {
     message: Option<String>,
     error_code: Option<i64>,
     validation_url: Option<String>,
+    appeal_url: Option<String>,
     trajectory_id: Option<String>,
 }
 
@@ -272,10 +280,13 @@ fn classify_failure(
     Option<i64>,
     Option<String>,
     Option<String>,
+    Option<String>,
     String,
 ) {
     if let Some(payload) = parse_wakeup_error_payload(raw_error) {
-        let status = if payload.kind.as_deref() == Some(STATUS_VERIFICATION_REQUIRED)
+        let status = if payload.kind.as_deref() == Some(STATUS_TOS_VIOLATION) {
+            STATUS_TOS_VIOLATION
+        } else if payload.kind.as_deref() == Some(STATUS_VERIFICATION_REQUIRED)
             || payload.error_code == Some(403)
         {
             STATUS_VERIFICATION_REQUIRED
@@ -287,6 +298,7 @@ fn classify_failure(
             status,
             payload.error_code,
             payload.validation_url,
+            payload.appeal_url,
             payload.trajectory_id,
             message,
         );
@@ -302,6 +314,17 @@ fn classify_failure(
             Some(401),
             None,
             None,
+            None,
+            raw_error.to_string(),
+        );
+    }
+    if lower.contains("tos_violation") || lower.contains("violation of terms") {
+        return (
+            STATUS_TOS_VIOLATION,
+            Some(403),
+            None,
+            None,
+            None,
             raw_error.to_string(),
         );
     }
@@ -311,11 +334,12 @@ fn classify_failure(
             Some(403),
             None,
             None,
+            None,
             raw_error.to_string(),
         );
     }
 
-    (STATUS_FAILED, None, None, None, raw_error.to_string())
+    (STATUS_FAILED, None, None, None, None, raw_error.to_string())
 }
 
 pub async fn run_batch(
@@ -392,11 +416,12 @@ pub async fn run_batch(
                     last_error_code: None,
                     last_message: Some(resp.reply),
                     validation_url: None,
+                    appeal_url: None,
                     trajectory_id: None,
                     duration_ms: Some(resp.duration_ms),
                 },
                 Err(err) => {
-                    let (status, code, validation_url, trajectory_id, message) =
+                    let (status, code, validation_url, appeal_url, trajectory_id, message) =
                         classify_failure(&err);
                     WakeupVerificationStateItem {
                         account_id: account_id_owned,
@@ -407,6 +432,7 @@ pub async fn run_batch(
                         last_error_code: code,
                         last_message: Some(message),
                         validation_url,
+                        appeal_url,
                         trajectory_id,
                         duration_ms: Some(started_at.elapsed().as_millis() as u64),
                     }
@@ -418,14 +444,36 @@ pub async fn run_batch(
     let mut completed = 0usize;
     let mut success_count = 0usize;
     let mut verification_required_count = 0usize;
+    let mut tos_violation_count = 0usize;
     let mut failed_count = 0usize;
     let mut records = Vec::new();
 
     while let Some(item) = futures.next().await {
         completed += 1;
         match item.status.as_str() {
-            STATUS_SUCCESS => success_count += 1,
+            STATUS_SUCCESS => {
+                success_count += 1;
+                // 唤醒成功说明 Token 有效，清除 disabled 和 quota_error
+                if let Ok(mut account) = modules::load_account(&item.account_id) {
+                    let mut changed = false;
+                    if account.disabled {
+                        modules::logger::log_info(&format!(
+                            "[WakeupVerification] 唤醒成功，自动解除禁用状态: {}",
+                            account.email
+                        ));
+                        account.disabled = false;
+                        account.disabled_reason = None;
+                        account.disabled_at = None;
+                        changed = true;
+                    }
+                    if changed {
+                        account.quota_error = None;
+                        let _ = modules::save_account(&account);
+                    }
+                }
+            }
             STATUS_VERIFICATION_REQUIRED => verification_required_count += 1,
+            STATUS_TOS_VIOLATION => tos_violation_count += 1,
             STATUS_AUTH_EXPIRED | STATUS_FAILED => failed_count += 1,
             _ => failed_count += 1,
         }
@@ -439,6 +487,7 @@ pub async fn run_batch(
             completed,
             success_count,
             verification_required_count,
+            tos_violation_count,
             failed_count,
             running: completed < total,
             item: Some(item),
@@ -456,6 +505,7 @@ pub async fn run_batch(
         completed,
         success_count,
         verification_required_count,
+        tos_violation_count,
         failed_count,
         running: false,
         item: None,
@@ -471,6 +521,7 @@ pub async fn run_batch(
         completed,
         success_count,
         verification_required_count,
+        tos_violation_count,
         failed_count,
         records: records.clone(),
     };
@@ -491,6 +542,7 @@ pub async fn run_batch(
         completed,
         success_count,
         verification_required_count,
+        tos_violation_count,
         failed_count,
         records,
     })
@@ -519,6 +571,7 @@ pub fn build_display_state_for_all_accounts() -> Result<Vec<WakeupVerificationSt
                 last_error_code: None,
                 last_message: None,
                 validation_url: None,
+                appeal_url: None,
                 trajectory_id: None,
                 duration_ms: None,
             });

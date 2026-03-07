@@ -847,7 +847,7 @@
         "line1": "„Jetzt prüfen“ sendet eine minimale Chat-Anfrage, indem der Antigravity-Client über ein lokales Gateway und das offizielle Language-Server-Protokoll simuliert wird.",
         "line2": "Dabei werden wenige Token verbraucht (in der Regel ein kurzer Dialog). Der tatsächliche Verbrauch hängt von Modell und Kontorichtlinie ab.",
         "line3": "Diese Aktion ändert keine Wakeup-Task-Einstellungen. Sie prüft nur die Kontoverfügbarkeit und schreibt einen Prüfdatensatz.",
-        "line4": "Wenn 403 zurückgegeben wird, muss zuerst die Kontoverifizierung abgeschlossen werden. Das Ergebnis enthält Verifizierungs-URL und Schnellaktionen."
+        "line4": "Bei einem 403-Fehler muss zuerst die Kontoverifizierung abgeschlossen oder ein Einspruch eingereicht werden; das Ergebnis enthält die URL und Schnellaktionen."
       },
       "deleteConfirm": "Möchten Sie das wirklich löschen?"
     },
@@ -876,6 +876,9 @@
       "validationUrlLabel": "Bestätigungs-URL (kopierbar)",
       "completeVerification": "Bestätigung abschließen",
       "copyValidationUrl": "Bestätigungs-URL kopieren",
+      "tosViolationTitle": "TOS-Verstoß",
+      "submitAppeal": "Einspruch einlegen",
+      "copyAppealUrl": "Link kopieren",
       "copyDebugInfo": "Debug-Infos kopieren",
       "errorCode": "Fehlercode: {{code}}",
       "trajectoryId": "Trajektorien-ID: {{id}}",

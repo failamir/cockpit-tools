@@ -841,7 +841,7 @@
         "line1": "立即检测会通过「本地网关 + 官方 Language Server 协议」模拟 Antigravity 客户端发起最小对话请求。",
         "line2": "该过程会消耗少量 Token（通常为一次短对话），实际消耗取决于模型与账号策略。",
         "line3": "该操作不会修改唤醒任务配置，仅用于检测账号可用性并写入检测记录。",
-        "line4": "若返回 403，需要先完成账号验证；结果中会提供验证地址与快捷操作。"
+        "line4": "若返回 403，需要先完成账号验证或提交保证书；结果中会提供地址与快捷操作。"
       },
       "deleteConfirm": "是否确认删除？"
     },
@@ -870,6 +870,9 @@
       "validationUrlLabel": "验证地址（可复制访问）",
       "completeVerification": "立即验证",
       "copyValidationUrl": "复制验证地址",
+      "tosViolationTitle": "TOS 违规",
+      "submitAppeal": "立即提交保证书",
+      "copyAppealUrl": "复制链接",
       "copyDebugInfo": "复制调试信息",
       "errorCode": "错误码：{{code}}",
       "trajectoryId": "轨迹ID：{{id}}",

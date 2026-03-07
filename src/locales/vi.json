@@ -847,7 +847,7 @@
         "line1": "“Kiểm tra ngay” sẽ gửi một yêu cầu chat tối thiểu bằng cách mô phỏng client Antigravity qua cổng nội bộ và giao thức Language Server chính thức.",
         "line2": "Quy trình này tiêu tốn một lượng nhỏ token (thường là một đoạn hội thoại ngắn). Mức tiêu thụ thực tế phụ thuộc vào model và chính sách tài khoản.",
         "line3": "Thao tác này không thay đổi cấu hình tác vụ đánh thức. Nó chỉ kiểm tra khả dụng của tài khoản và ghi lịch sử kiểm tra.",
-        "line4": "Nếu trả về 403, bạn cần hoàn tất xác minh tài khoản trước. Kết quả sẽ cung cấp URL xác minh và thao tác nhanh."
+        "line4": "Nếu trả về 403, cần hoàn tất xác minh tài khoản hoặc gửi kháng cáo trước; kết quả sẽ cung cấp địa chỉ và thao tác nhanh."
       },
       "deleteConfirm": "Xác nhận xóa?"
     },
@@ -876,6 +876,9 @@
       "validationUrlLabel": "URL xác minh (có thể sao chép)",
       "completeVerification": "Hoàn tất xác minh",
       "copyValidationUrl": "Sao chép URL xác minh",
+      "tosViolationTitle": "Vi phạm TOS",
+      "submitAppeal": "Gửi kháng cáo",
+      "copyAppealUrl": "Sao chép liên kết",
       "copyDebugInfo": "Sao chép thông tin gỡ lỗi",
       "errorCode": "Mã lỗi: {{code}}",
       "trajectoryId": "ID quỹ đạo: {{id}}",

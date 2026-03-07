@@ -847,7 +847,7 @@
         "line1": "“Detectar agora” envia uma solicitação mínima de chat simulando o cliente Antigravity por meio de gateway local e do protocolo oficial Language Server.",
         "line2": "Esse processo consome uma pequena quantidade de tokens (normalmente um diálogo curto). O consumo real depende do modelo e da política da conta.",
         "line3": "Essa ação não altera a configuração das tarefas de despertar. Ela apenas detecta a disponibilidade da conta e grava o histórico de detecção.",
-        "line4": "Se retornar 403, você precisa concluir primeiro a verificação da conta. O resultado incluirá URL de verificação e ações rápidas."
+        "line4": "Se retornar 403, é necessário concluir a verificação da conta ou enviar uma apelação; o resultado incluirá o endereço e ações rápidas."
       },
       "deleteConfirm": "Confirmar exclusão?"
     },
@@ -876,6 +876,9 @@
       "validationUrlLabel": "URL de verificação (copiável)",
       "completeVerification": "Concluir verificação",
       "copyValidationUrl": "Copiar URL de verificação",
+      "tosViolationTitle": "Violação dos TOS",
+      "submitAppeal": "Enviar apelação",
+      "copyAppealUrl": "Copiar link",
       "copyDebugInfo": "Copiar informações de depuração",
       "errorCode": "Código de erro: {{code}}",
       "trajectoryId": "ID da trajetória: {{id}}",

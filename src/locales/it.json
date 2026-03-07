@@ -847,7 +847,7 @@
         "line1": "« Controlla ora » invia una richiesta chat minima simulando il client Antigravity tramite gateway locale e protocollo ufficiale Language Server.",
         "line2": "Questa operazione consuma una piccola quantità di token (di solito un breve dialogo). Il consumo reale dipende da modello e policy dell’account.",
         "line3": "Questa azione non modifica la configurazione delle attività di risveglio. Controlla solo la disponibilità dell’account e registra lo storico di controllo.",
-        "line4": "Se viene restituito 403, è necessario completare prima la verifica dell’account. Il risultato includerà URL di verifica e azioni rapide."
+        "line4": "Se viene restituito un errore 403, è necessario verificare l'account o inviare un ricorso; il risultato includerà l'indirizzo e le azioni rapide."
       },
       "deleteConfirm": "Confermare l'eliminazione?"
     },
@@ -876,6 +876,9 @@
       "validationUrlLabel": "URL di verifica (copiabile)",
       "completeVerification": "Completa verifica",
       "copyValidationUrl": "Copia URL di verifica",
+      "tosViolationTitle": "Violazione TOS",
+      "submitAppeal": "Invia ricorso",
+      "copyAppealUrl": "Copia link",
       "copyDebugInfo": "Copia informazioni di debug",
       "errorCode": "Codice errore: {{code}}",
       "trajectoryId": "ID traiettoria: {{id}}",

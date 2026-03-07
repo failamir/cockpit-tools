@@ -847,7 +847,7 @@
         "line1": "「今すぐチェック」は、ローカルゲートウェイと公式 Language Server プロトコルで Antigravity クライアントを模擬し、最小限の対話リクエストを送信します。",
         "line2": "この処理では少量のトークン（通常は短い1回の対話分）を消費します。実際の消費量はモデルとアカウントポリシーに依存します。",
         "line3": "この操作は起動タスクの設定を変更せず、アカウント可用性のチェックとチェック履歴の記録のみを行います。",
-        "line4": "403 が返された場合は、先にアカウント検証を完了してください。結果には検証 URL とクイック操作が表示されます。"
+        "line4": "403 が返された場合、アカウント認証または異議申し立ての提出が必要です。結果にはURLとクイックアクションが含まれます。"
       },
       "deleteConfirm": "削除を確認しますか？"
     },
@@ -876,6 +876,9 @@
       "validationUrlLabel": "認証URL（コピー可能）",
       "completeVerification": "認証を完了",
       "copyValidationUrl": "認証URLをコピー",
+      "tosViolationTitle": "TOS 違反",
+      "submitAppeal": "異議申し立て",
+      "copyAppealUrl": "リンクをコピー",
       "copyDebugInfo": "デバッグ情報をコピー",
       "errorCode": "エラーコード: {{code}}",
       "trajectoryId": "トラジェクトリID: {{id}}",

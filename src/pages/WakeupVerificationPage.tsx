@@ -26,7 +26,7 @@ interface WakeupVerificationPageProps {
 }
 
 type AvailableModel = AntigravityModelOption;
-type DetailFilter = 'all' | 'success' | 'verification_required' | 'failed';
+type DetailFilter = 'all' | 'success' | 'verification_required' | 'tos_violation' | 'failed';
 type DetailMode = 'running' | 'history';
 
 interface WakeupVerificationStateItem {
@@ -38,6 +38,7 @@ interface WakeupVerificationStateItem {
   lastErrorCode?: number | null;
   lastMessage?: string | null;
   validationUrl?: string | null;
+  appealUrl?: string | null;
   trajectoryId?: string | null;
   durationMs?: number | null;
 }
@@ -48,6 +49,7 @@ interface WakeupVerificationProgressPayload {
   completed: number;
   successCount: number;
   verificationRequiredCount: number;
+  tosViolationCount: number;
   failedCount: number;
   running: boolean;
   item?: WakeupVerificationStateItem | null;
@@ -62,6 +64,7 @@ interface WakeupVerificationBatchHistoryItem {
   completed: number;
   successCount: number;
   verificationRequiredCount: number;
+  tosViolationCount: number;
   failedCount: number;
   records: WakeupVerificationStateItem[];
 }
@@ -75,6 +78,7 @@ interface WakeupVerificationBatchResult {
   completed: number;
   successCount: number;
   verificationRequiredCount: number;
+  tosViolationCount: number;
   failedCount: number;
   records: WakeupVerificationStateItem[];
 }
@@ -85,6 +89,7 @@ const STATUS_IDLE = 'idle';
 const STATUS_RUNNING = 'running';
 const STATUS_SUCCESS = 'success';
 const STATUS_VERIFICATION_REQUIRED = 'verification_required';
+const STATUS_TOS_VIOLATION = 'tos_violation';
 const STATUS_AUTH_EXPIRED = 'auth_expired';
 const STATUS_FAILED = 'failed';
 
@@ -108,6 +113,7 @@ function normalizeStatus(value?: string | null): string {
     case STATUS_RUNNING:
     case STATUS_SUCCESS:
     case STATUS_VERIFICATION_REQUIRED:
+    case STATUS_TOS_VIOLATION:
     case STATUS_AUTH_EXPIRED:
     case STATUS_FAILED:
     case STATUS_IDLE:
@@ -148,11 +154,13 @@ function isFailedStatus(status: string): boolean {
   return normalized === STATUS_FAILED || normalized === STATUS_AUTH_EXPIRED;
 }
 
+
 function matchesDetailFilter(item: WakeupVerificationStateItem, filter: DetailFilter): boolean {
   const normalized = normalizeStatus(item.status);
   if (filter === 'all') return true;
   if (filter === 'success') return normalized === STATUS_SUCCESS;
   if (filter === 'verification_required') return normalized === STATUS_VERIFICATION_REQUIRED;
+  if (filter === 'tos_violation') return normalized === STATUS_TOS_VIOLATION;
   return isFailedStatus(normalized);
 }
 
@@ -184,6 +192,8 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
     isPrivacyModeEnabledByDefault(),
   );
 
+  const [accountSearchQuery, setAccountSearchQuery] = useState('');
+
   const activeBatchIdRef = useRef<string | null>(null);
   const accountSelectAllRef = useRef<HTMLInputElement | null>(null);
 
@@ -193,6 +203,15 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
     return map;
   }, [accounts]);
   const accountIds = useMemo(() => accounts.map((account) => account.id), [accounts]);
+  const filteredConfigAccounts = useMemo(
+    () =>
+      accountSearchQuery.trim()
+        ? accounts.filter((account) =>
+          account.email.toLowerCase().includes(accountSearchQuery.trim().toLowerCase()),
+        )
+        : accounts,
+    [accounts, accountSearchQuery],
+  );
   const selectedAccountSet = useMemo(() => new Set(selectedAccounts), [selectedAccounts]);
   const allAccountsSelected = useMemo(
     () => accountIds.length > 0 && accountIds.every((id) => selectedAccountSet.has(id)),
@@ -282,6 +301,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
       completed: progress?.completed ?? 0,
       successCount: progress?.successCount ?? 0,
       verificationRequiredCount: progress?.verificationRequiredCount ?? 0,
+      tosViolationCount: progress?.tosViolationCount ?? 0,
       failedCount: progress?.failedCount ?? 0,
       records: progressRows,
     };
@@ -307,6 +327,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
     const all = detailRows.length;
     let success = 0;
     let verificationRequired = 0;
+    let tosViolation = 0;
     let failed = 0;
 
     detailRows.forEach((item) => {
@@ -315,6 +336,8 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
         success += 1;
       } else if (status === STATUS_VERIFICATION_REQUIRED) {
         verificationRequired += 1;
+      } else if (status === STATUS_TOS_VIOLATION) {
+        tosViolation += 1;
       } else if (isFailedStatus(status)) {
         failed += 1;
       }
@@ -324,6 +347,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
       all,
       success,
       verificationRequired,
+      tosViolation,
       failed,
     };
   }, [detailRows]);
@@ -563,6 +587,8 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
         return t('common.success');
       case STATUS_VERIFICATION_REQUIRED:
         return t('wakeup.errorUi.verificationRequiredTitle');
+      case STATUS_TOS_VIOLATION:
+        return t('wakeup.errorUi.tosViolationTitle');
       case STATUS_AUTH_EXPIRED:
         return t('accounts.status.authInvalid');
       case STATUS_FAILED:
@@ -581,6 +607,8 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
         return 'is-success';
       case STATUS_VERIFICATION_REQUIRED:
         return 'is-warning';
+      case STATUS_TOS_VIOLATION:
+        return 'is-tos-violation';
       case STATUS_AUTH_EXPIRED:
       case STATUS_FAILED:
         return 'is-failed';
@@ -679,6 +707,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
       completed: 0,
       successCount: 0,
       verificationRequiredCount: 0,
+      tosViolationCount: 0,
       failedCount: 0,
       running: true,
       item: null,
@@ -711,6 +740,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
         completed: result.completed,
         successCount: result.successCount,
         verificationRequiredCount: result.verificationRequiredCount,
+        tosViolationCount: result.tosViolationCount,
         failedCount: result.failedCount,
         records: result.records || [],
       };
@@ -722,6 +752,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
         completed: result.completed,
         successCount: result.successCount,
         verificationRequiredCount: result.verificationRequiredCount,
+        tosViolationCount: result.tosViolationCount,
         failedCount: result.failedCount,
         running: false,
         item: null,
@@ -862,6 +893,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
               <th>{t('wakeup.verification.filters.all')}</th>
               <th>{t('common.success')}</th>
               <th>{t('wakeup.errorUi.verificationRequiredTitle')}</th>
+              <th>{t('wakeup.errorUi.tosViolationTitle')}</th>
               <th>{t('common.failed')}</th>
               <th>{t('accounts.columns.actions')}</th>
             </tr>
@@ -869,7 +901,7 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
           <tbody>
             {historyBatches.length === 0 ? (
               <tr>
-                <td colSpan={8} className="verification-empty-cell">
+                <td colSpan={9} className="verification-empty-cell">
                   {t('wakeup.historyEmpty')}
                 </td>
               </tr>
@@ -894,6 +926,9 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
                   </td>
                   <td>
                     <span className="verification-count-badge is-warning">{batch.verificationRequiredCount}</span>
+                  </td>
+                  <td>
+                    <span className="verification-count-badge is-failed">{batch.tosViolationCount ?? 0}</span>
                   </td>
                   <td>
                     <span className="verification-count-badge is-failed">{batch.failedCount}</span>
@@ -977,17 +1012,23 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
                     <span className="verification-checkbox-ui" aria-hidden="true" />
                     <span className="verification-checkbox-label">{t('wakeup.verification.actions.selectAllAccounts')}</span>
                   </label>
+                  <input
+                    type="text"
+                    className="verification-account-search"
+                    placeholder={t('accounts.search.placeholder', '搜索账号...')}
+                    value={accountSearchQuery}
+                    onChange={(e) => setAccountSearchQuery(e.target.value)}
+                  />
                   <span className="verification-account-select-count">
                     {selectedAccounts.length}/{accountIds.length}
                   </span>
                 </div>
                 <div className="verification-account-list">
-                  {accounts.map((account) => (
+                  {filteredConfigAccounts.map((account) => (
                     <label
                       key={account.id}
-                      className={`verification-account-item ${
-                        selectedAccounts.includes(account.id) ? 'selected' : ''
-                      }`}
+                      className={`verification-account-item ${selectedAccounts.includes(account.id) ? 'selected' : ''
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -1060,6 +1101,13 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
                 </button>
                 <button
                   type="button"
+                  className={`pill pill-danger verification-filter-pill ${detailFilter === 'tos_violation' ? 'active' : ''}`}
+                  onClick={() => setDetailFilter('tos_violation')}
+                >
+                  {t('wakeup.errorUi.tosViolationTitle')} {detailCounts.tosViolation}
+                </button>
+                <button
+                  type="button"
                   className={`pill pill-danger verification-filter-pill ${detailFilter === 'failed' ? 'active' : ''}`}
                   onClick={() => setDetailFilter('failed')}
                 >
@@ -1098,6 +1146,24 @@ export function WakeupVerificationPage({ onNavigate }: WakeupVerificationPagePro
                         </div>
                         {renderDetailMessage(item)}
                         {item.validationUrl ? renderValidationActions(item) : null}
+                        {item.appealUrl ? (
+                          <div className="verification-inline-actions">
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => openValidationUrl(item.appealUrl!)}
+                            >
+                              {t('wakeup.errorUi.submitAppeal')}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => copyText(item.appealUrl!)}
+                            >
+                              {t('wakeup.errorUi.copyAppealUrl')}
+                            </button>
+                          </div>
+                        ) : null}
                       </li>
                     );
                   })

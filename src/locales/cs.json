@@ -847,7 +847,7 @@
         "line1": "„Zkontrolovat nyní“ odešle minimální chat požadavek simulací klienta Antigravity přes lokální bránu a oficiální protokol Language Server.",
         "line2": "Tento proces spotřebuje malé množství tokenů (obvykle jeden krátký dialog). Skutečná spotřeba závisí na modelu a zásadách účtu.",
         "line3": "Tato akce nemění nastavení úloh probuzení. Pouze zkontroluje dostupnost účtu a zapíše záznam kontroly.",
-        "line4": "Pokud se vrátí 403, je nutné nejdříve dokončit ověření účtu. Výsledek nabídne ověřovací URL a rychlé akce."
+        "line4": "Pokud je vrácena chyba 403, je nutné nejprve ověřit účet nebo podat odvolání; výsledek bude obsahovat adresu a rychlé akce."
       },
       "deleteConfirm": "Opravdu chcete smazat?"
     },
@@ -876,6 +876,9 @@
       "validationUrlLabel": "Ověřovací URL (lze kopírovat)",
       "completeVerification": "Dokončit ověření",
       "copyValidationUrl": "Kopírovat ověřovací URL",
+      "tosViolationTitle": "Porušení TOS",
+      "submitAppeal": "Podat odvolání",
+      "copyAppealUrl": "Kopírovat odkaz",
       "copyDebugInfo": "Kopírovat ladicí informace",
       "errorCode": "Kód chyby: {{code}}",
       "trajectoryId": "ID trajektorie: {{id}}",

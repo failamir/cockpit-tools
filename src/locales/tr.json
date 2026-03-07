@@ -847,7 +847,7 @@
         "line1": "“Şimdi kontrol et”, Antigravity istemcisini yerel ağ geçidi ve resmi Language Server protokolü ile simüle ederek minimum bir sohbet isteği gönderir.",
         "line2": "Bu işlem az miktarda token tüketir (genelde kısa bir konuşma). Gerçek tüketim modele ve hesap politikasına bağlıdır.",
         "line3": "Bu işlem uyandırma görevi ayarlarını değiştirmez. Yalnızca hesap kullanılabilirliğini kontrol eder ve kontrol kaydı oluşturur.",
-        "line4": "403 dönerse önce hesap doğrulaması tamamlanmalıdır. Sonuçta doğrulama adresi ve hızlı işlemler gösterilir."
+        "line4": "403 döndürülürse, hesap doğrulaması veya itiraz gönderimi gereklidir; sonuçta adres ve hızlı işlemler sağlanacaktır."
       },
       "deleteConfirm": "Silme işlemi onaylansın mı?"
     },
@@ -876,6 +876,9 @@
       "validationUrlLabel": "Doğrulama URL'si (kopyalanabilir)",
       "completeVerification": "Doğrulamayı tamamla",
       "copyValidationUrl": "Doğrulama URL'sini kopyala",
+      "tosViolationTitle": "TOS İhlali",
+      "submitAppeal": "İtiraz gönder",
+      "copyAppealUrl": "Bağlantıyı kopyala",
       "copyDebugInfo": "Hata ayıklama bilgisini kopyala",
       "errorCode": "Hata kodu: {{code}}",
       "trajectoryId": "Yörünge Kimliği: {{id}}",

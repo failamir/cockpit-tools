@@ -847,7 +847,7 @@
         "line1": "« Détecter maintenant » envoie une requête de chat minimale en simulant le client Antigravity via une passerelle locale et le protocole officiel Language Server.",
         "line2": "Cette opération consomme une petite quantité de jetons (généralement un court dialogue). La consommation réelle dépend du modèle et de la politique du compte.",
         "line3": "Cette action ne modifie pas la configuration des tâches de réveil. Elle détecte seulement la disponibilité du compte et enregistre l’historique de détection.",
-        "line4": "Si un 403 est renvoyé, vous devez d’abord terminer la vérification du compte. Le résultat inclura l’URL de vérification et des actions rapides."
+        "line4": "Si un code 403 est renvoyé, la vérification du compte ou la soumission d'un appel est requise; le résultat fournira l'adresse et les actions rapides."
       },
       "deleteConfirm": "Confirmer la suppression ?"
     },
@@ -876,6 +876,9 @@
       "validationUrlLabel": "URL de vérification (copiable)",
       "completeVerification": "Terminer la vérification",
       "copyValidationUrl": "Copier l'URL de vérification",
+      "tosViolationTitle": "Violation des CGU",
+      "submitAppeal": "Soumettre un appel",
+      "copyAppealUrl": "Copier le lien",
       "copyDebugInfo": "Copier les infos de débogage",
       "errorCode": "Code d'erreur : {{code}}",
       "trajectoryId": "ID de trajectoire : {{id}}",

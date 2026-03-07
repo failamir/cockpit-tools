@@ -847,7 +847,7 @@
         "line1": "立即檢測會透過「本地閘道 + 官方 Language Server 協議」模擬 Antigravity 客戶端發起最小對話請求。",
         "line2": "此流程會消耗少量 Token（通常為一次短對話），實際消耗取決於模型與帳號策略。",
         "line3": "此操作不會修改喚醒任務設定，僅用於檢測帳號可用性並寫入檢測記錄。",
-        "line4": "若返回 403，需先完成帳號驗證；結果中會提供驗證網址與快捷操作。"
+        "line4": "若返回 403，需要先完成帳號驗證或提交保證書；結果中會提供地址與快捷操作。"
       },
       "deleteConfirm": "是否確認刪除？"
     },
@@ -876,6 +876,9 @@
       "validationUrlLabel": "驗證網址（可複製）",
       "completeVerification": "完成驗證",
       "copyValidationUrl": "複製驗證網址",
+      "tosViolationTitle": "TOS 違規",
+      "submitAppeal": "立即提交保證書",
+      "copyAppealUrl": "複製連結",
       "copyDebugInfo": "複製除錯資訊",
       "errorCode": "錯誤碼：{{code}}",
       "trajectoryId": "軌跡ID：{{id}}",
