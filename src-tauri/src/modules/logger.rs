@@ -223,7 +223,7 @@ pub fn init_logger() {
     let file_layer = fmt::Layer::new()
         .with_writer(non_blocking)
         .with_ansi(false)
-        .with_target(true)
+        .with_target(false)
         .with_level(true)
         .with_timer(LocalTimer);
 
