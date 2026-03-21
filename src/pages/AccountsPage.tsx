@@ -37,7 +37,8 @@ import {
   FolderOpen,
   FolderPlus,
   ChevronRight,
-  LogOut
+  LogOut,
+  Bot
 } from 'lucide-react'
 import { useTranslation, Trans } from 'react-i18next'
 import { useAccountStore } from '../stores/useAccountStore'
@@ -94,6 +95,7 @@ import {
 } from '../utils/privacy'
 import { useExportJsonModal } from '../hooks/useExportJsonModal'
 import { MultiSelectFilterDropdown, type MultiSelectFilterOption } from '../components/MultiSelectFilterDropdown'
+import { TaskWorkerDashboard } from '../components/TaskWorkerDashboard'
 
 interface AccountsPageProps {
   onNavigate?: (page: Page) => void
@@ -164,6 +166,7 @@ const ANTIGRAVITY_TOKEN_BATCH_EXAMPLE = `[
 export function AccountsPage({ onNavigate }: AccountsPageProps) {
   const { t, i18n } = useTranslation()
   const locale = i18n.language || 'zh-CN'
+  const [showWorkerPool, setShowWorkerPool] = useState(false)
   const untaggedKey = '__untagged__'
   const {
     accounts,
@@ -2553,9 +2556,16 @@ export function AccountsPage({ onNavigate }: AccountsPageProps) {
           </div>
         )}
 
+        {/* Worker Pool Dashboard */}
+        {showWorkerPool && <TaskWorkerDashboard />}
+
         {/* 工具栏 */}
         <div className="toolbar">
           <div className="toolbar-left">
+            <button className="btn btn-secondary" onClick={() => setShowWorkerPool(!showWorkerPool)}>
+              <Bot size={16} className="mr-1" />
+              {showWorkerPool ? 'Hide Worker Pool' : 'Worker Pool'}
+            </button>
             <div className="search-box">
               <Search size={16} className="search-icon" />
               <input
