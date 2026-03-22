@@ -1,0 +1,34 @@
+Sistem di mana beberapa akun yang terautentikasi bekerja sama untuk menyelesaikan satu proyek adalah penerapan dari konsep **Multi-Agent Collaboration** atau **Account / Worker Pooling**. Mengingat aplikasi Anda (Antigravity Account Management) sudah memiliki pelacakan kuota (seperti di *screenshot* ada saldo AI Credits, limit Claude 4.5, dan Gemini), fitur ini akan sangat luar biasa jika diterapkan.
+
+Berikut adalah gambaran arsitektur dan cara kerja fitur tersebut jika direalisasikan:
+
+### 1. Sistem Antrean & Pemecahan Tugas (Task Queue & Decomposition)
+Proyek utuh tidak bisa langsung dilempar begitu saja ke beberapa akun sekaligus. Sistem Anda harus bertindak sebagai **"Manager"** (Orchestrator).
+- Ketika user memasukkan prompt proyek besar (misal: "Buatkan aplikasi e-commerce"), Manager akan memecah proyek tersebut menjadi banyak *sub-tasks* yang lebih kecil (misal: *Setup DB, Buat Login API, Buat UI Landing Page, dsb.*).
+- Tugas-tugas ini dimasukkan ke dalam sebuah antrean (Task Queue) terpusat, seperti Redis Queue atau RabbitMQ.
+
+### 2. Rotasi Akun & Load Balancing (Account Pooling)
+Ini adalah inti dari *resource management* yang memanfaatkan banyak akun agar tidak mudah terkena *rate-limit*:
+- **Pengecekan Kuota Otomatis:** Sistem akan selalu mengecek metrik (100% Claude 4.5, Gemini Pro, dll) dari setiap akun sebelum memberikan tugas.
+- **Round-Robin / Smart Routing:** Jika Tugas 1 membutuhkan model Claude 4.5, sistem akan mencari akun mana yang kuota Claude 4.5-nya masih paling banyak (misal akun `fatimahgelora`). Jika di tengah jalan akun tersebut mencapai *rate-limit* atau limit habis, sistem akan memberikan komando **Handoff** (lempar tugas) secara mulus ke akun `blanjadapurnusantara`.
+
+### 3. Memori Bersama (Shared Context & State Management)
+Karena akun yang mengerjakan berbeda-beda, AI tersebut tidak punya riwayat percakapan dari akun lain. Oleh karena itu, sistem Anda harus menyediakan "Otak Bersama".
+- **Shared Workspace:** Setiap tugas yang selesai oleh Akun A, hasilnya (berupa ringkasan atau *code snippet*) disimpan ke dalam sebuah Database (bisa berupa Vector Database atau file JSON statis di server).
+- **Context Injection:** Ketika Akun B mengambil tugas selanjutnya, sistem Anda (melalui API) akan menyelipkan (*inject*) konteks atau hasil kerjaan Akun A sebelumnya ke dalam *system prompt* Akun B. Sehingga, Akun B tahu persis sampai mana proyek tersebut dikerjakan.
+
+### 4. Pembagian Peran Spesifik (Role-Based Agents)
+Karena Anda memiliki ketersediaan beberapa model (Claude 4.5, Gemini Pro, Gemini Flash) di dalam akun-akun tersebut, Anda bisa membuat pembagian kerja:
+- **Akun dengan Claude 4.5:** Ditugaskan spesifik untuk menulis *logic* kode yang kompleks dan arsitektur karena penalarannya tinggi.
+- **Akun dengan Gemini Pro/Flash:** Ditugaskan untuk melakukan riset data cepat, pembuatan *dummy data*, *scraping*, atau sekadar merapikan sintaks (*code review*), karena prosesnya lebih cepat dan *cost-efficient*.
+
+### Alur Singkat (User Flow & System Flow)
+1. **User** menekan tombol *"Start Project"*.
+2. **Sistem (Manager)** memecah proyek menjadi Task 1... Task 10.
+3. **Sistem** menugaskan Task 1 ke **Akun A** (selama statusnya aktif & kuota aman).
+4. **Akun A** memproses dan menyimpan hasilnya ke *Shared Database*.
+5. **Akun A** kehabisan limit. Sistem menandai tugas selanjutnya dan memberikannya ke **Akun B** dan **Akun C** yang berjalan secara asinkron (*paralel*).
+6. Di UI (halaman *Cockpit Tools* Anda), akan terlihat fitur real-time *progress bar* yang menampilkan: *"Akun A sedang membuat API, Akun B sedang merancang UI... "*
+7. Setelah semua antrean tugas kosong, proyek disatukan dan di-*deliver* ke User.
+
+Intinya, Anda membangun sebuah "Pabrik AI" di mana setiap akun berfungsi sebagai pekerja (*worker node*), dan aplikasi Anda bertindak sebagai mandor yang cerdas dalam mengatur sisa energi (kuota credits) dari masing-masing pekerja tersebut.

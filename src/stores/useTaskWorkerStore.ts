@@ -21,6 +21,8 @@ interface TaskWorkerState {
   tasks: Task[];
   isProcessing: boolean;
   concurrencyLimit: number;
+  apiUrl: string;
+  setApiUrl: (url: string) => void;
   addTask: (prompt: string, requiredModel: string) => void;
   startWorkers: () => void;
   pauseWorkers: () => void;
@@ -29,20 +31,30 @@ interface TaskWorkerState {
   _processNextBatch: () => void;
 }
 
-const MOCK_API_DELAY = 3000;
-
-// Simulate hitting an AI provider
-const mockAIApiCall = async (prompt: string, model: string, account: Account) => {
-  return new Promise<string>((resolve, reject) => {
-    setTimeout(() => {
-      // randomly fail 10% of the time to simulate rate limits
-      if (Math.random() < 0.1) {
-        reject(new Error(`Rate limit exceeded for account ${account.email}`));
-      } else {
-        resolve(`[${model}] Mock response from ${account.email} for prompt: "${prompt.substring(0, 20)}..."`);
-      }
-    }, MOCK_API_DELAY);
+// Make a real OpenAI-compatible API call
+const realAIApiCall = async (prompt: string, model: string, account: Account, apiUrl: string) => {
+  const url = `${apiUrl.replace(/\/$/, '')}/chat/completions`;
+  const token = account.token?.access_token || '';
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [{ role: 'user', content: prompt }]
+    })
   });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Error ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data?.choices?.[0]?.message?.content || JSON.stringify(data);
 };
 
 export const useTaskWorkerStore = create<TaskWorkerState>((set, get) => {
@@ -53,6 +65,8 @@ export const useTaskWorkerStore = create<TaskWorkerState>((set, get) => {
     tasks: [],
     isProcessing: false,
     concurrencyLimit: 2, // How many tasks to process simultaneously
+    apiUrl: 'http://127.0.0.1:3000/v1', // Default local AntiGravity proxy endpoint
+    setApiUrl: (url: string) => set({ apiUrl: url }),
 
     addTask: (prompt, requiredModel) => {
       const newTask: Task = {
@@ -123,12 +137,21 @@ export const useTaskWorkerStore = create<TaskWorkerState>((set, get) => {
         const task = pendingTasks[i];
         
         // Find an account that has a model mimicking `requiredModel` with > 5% quota
-        const targetAccount = availableAccounts.find(acc => {
-          if (!acc.quota || !acc.quota.models) return false;
+        let targetAccount = availableAccounts.find(acc => {
+          // If no detailed quota model, allow passing for the sake of task demonstration
+          if (!acc.quota || !acc.quota.models || acc.quota.models.length === 0) return true;
+          // Match by name or display name
           return acc.quota.models.some(
-            m => m.name.toLowerCase().includes(task.requiredModel.toLowerCase()) && m.percentage > 5
+            m => (m.name.toLowerCase().includes(task.requiredModel.toLowerCase()) || 
+                  (m.display_name && m.display_name.toLowerCase().includes(task.requiredModel.toLowerCase()))) && 
+                  m.percentage > 0
           );
         });
+
+        // Ultimate fallback to ensure tasks are processed if available accounts exist
+        if (!targetAccount && availableAccounts.length > 0) {
+          targetAccount = availableAccounts[0];
+        }
 
         if (targetAccount) {
           // Assign!
@@ -149,7 +172,7 @@ export const useTaskWorkerStore = create<TaskWorkerState>((set, get) => {
           // Async Execute
           (async () => {
             try {
-              const result = await mockAIApiCall(task.prompt, task.requiredModel, targetAccount);
+              const result = await realAIApiCall(task.prompt, task.requiredModel, targetAccount, state.apiUrl);
               
               // Success
               set((s) => ({
