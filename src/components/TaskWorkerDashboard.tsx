@@ -1,26 +1,27 @@
 import React, { useState } from 'react';
 import { useTaskWorkerStore } from '../stores/useTaskWorkerStore';
+import { useAccountStore } from '../stores/useAccountStore';
 import { Play, Pause, Plus, Trash2, CheckCircle2, XCircle, Loader2, Bot } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 
 export const TaskWorkerDashboard: React.FC = () => {
-  const { t } = useTranslation();
-  const { tasks, isProcessing, apiUrl, setApiUrl, startWorkers, pauseWorkers, addTask, clearTasks } = useTaskWorkerStore();
+  const { tasks, isProcessing, startWorkers, pauseWorkers, addTask, clearTasks } = useTaskWorkerStore();
+  const { accounts } = useAccountStore();
   const [promptInput, setPromptInput] = useState('');
-  const [modelSelect, setModelSelect] = useState('Claude 4.5'); // Or 'Gemini Pro'
+  const [modelSelect, setModelSelect] = useState('claude-sonnet-4-6');
+  const [accountSelect, setAccountSelect] = useState('auto');
 
   const handleAddTask = () => {
     if (!promptInput.trim()) return;
-    addTask(promptInput, modelSelect);
+    addTask(promptInput, modelSelect, accountSelect === 'auto' ? undefined : accountSelect);
     setPromptInput('');
   };
 
   const handleAddDummyBatch = () => {
     for (let i = 1; i <= 5; i++) {
-        addTask(`Dummy task ${i}: Summarize the benefits of AI.`, 'Claude 4.5');
+        addTask(`Dummy task ${i}: Summarize the benefits of AI.`, 'claude-sonnet-4-6');
     }
     for (let i = 1; i <= 5; i++) {
-        addTask(`Dummy task ${i + 5}: Generate a python script for sorting.`, 'Gemini Pro');
+        addTask(`Dummy task ${i + 5}: Generate a python script for sorting.`, 'gemini-3.1-pro-high');
     }
   };
 
@@ -33,14 +34,7 @@ export const TaskWorkerDashboard: React.FC = () => {
             Multi-Agent Worker Pool
           </h2>
           <div className="flex items-center gap-3">
-            <input 
-              type="text" 
-              className="input input-sm input-bordered w-64 text-xs font-mono" 
-              placeholder="API Base URL (e.g. http://127.0.0.1:3000/v1)"
-              title="Antigravity local proxy or external API base URL"
-              value={apiUrl}
-              onChange={(e) => setApiUrl(e.target.value)}
-            />
+
             <div className="flex gap-2">
             {isProcessing ? (
               <button className="btn btn-warning btn-sm" onClick={pauseWorkers}>
@@ -72,10 +66,20 @@ export const TaskWorkerDashboard: React.FC = () => {
             value={modelSelect} 
             onChange={(e) => setModelSelect(e.target.value)}
           >
-            <option value="Claude 4.5">Claude 4.5</option>
-            <option value="Gemini Pro">Gemini Pro</option>
-            <option value="Gemini Flash">Gemini Flash</option>
-            <option value="GPT-4O">GPT-4O</option>
+            <option value="claude-sonnet-4-6">Claude 4.6 Sonnet</option>
+            <option value="gemini-3.1-pro-high">Gemini 3.1 Pro (High)</option>
+            <option value="gemini-3-flash">Gemini 3 Flash</option>
+            <option value="gpt-oss-120b-medium">GPT-OSS 120B</option>
+          </select>
+          <select 
+            className="select select-sm select-bordered max-w-[180px]" 
+            value={accountSelect} 
+            onChange={(e) => setAccountSelect(e.target.value)}
+          >
+            <option value="auto">Auto Account</option>
+            {accounts.map(acc => (
+              <option key={acc.id} value={acc.id}>{acc.email}</option>
+            ))}
           </select>
           <button className="btn btn-primary btn-sm" onClick={handleAddTask}>
             <Plus size={16} /> Add 

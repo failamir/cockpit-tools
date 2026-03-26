@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { invoke } from '@tauri-apps/api/core';
 import { useAccountStore } from './useAccountStore';
 import { Account } from '../types/account';
 
@@ -9,6 +10,7 @@ export interface Task {
   prompt: string;
   requiredModel: string;
   status: TaskStatus;
+  preferredAccountId?: string;
   assignedAccountId?: string;
   assignedAccountEmail?: string;
   result?: string;
@@ -21,9 +23,7 @@ interface TaskWorkerState {
   tasks: Task[];
   isProcessing: boolean;
   concurrencyLimit: number;
-  apiUrl: string;
-  setApiUrl: (url: string) => void;
-  addTask: (prompt: string, requiredModel: string) => void;
+  addTask: (prompt: string, requiredModel: string, preferredAccountId?: string) => void;
   startWorkers: () => void;
   pauseWorkers: () => void;
   clearTasks: () => void;
@@ -31,49 +31,48 @@ interface TaskWorkerState {
   _processNextBatch: () => void;
 }
 
-// Make a real OpenAI-compatible API call
-const realAIApiCall = async (prompt: string, model: string, account: Account, apiUrl: string) => {
-  const url = `${apiUrl.replace(/\/$/, '')}/chat/completions`;
-  const token = account.token?.access_token || '';
+interface WakeupInvokeResult {
+  reply: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  traceId?: string;
+  responseId?: string;
+  durationMs?: number;
+}
+
+// Make a direct invoke to AntiGravity Wakeup Gateway
+const realAIApiCall = async (prompt: string, model: string, account: Account) => {
+  // First ensure the runtime is ready
+  await invoke('wakeup_ensure_runtime_ready');
   
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [{ role: 'user', content: prompt }]
-    })
+  // Call the official language server RPC
+  const result = await invoke<WakeupInvokeResult>('trigger_wakeup', {
+    accountId: account.id,
+    model: model,
+    prompt: prompt,
+    maxOutputTokens: 0,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Error ${response.status}: ${errorText}`);
-  }
-
-  const data = await response.json();
-  return data?.choices?.[0]?.message?.content || JSON.stringify(data);
+  return result.reply;
 };
 
 export const useTaskWorkerStore = create<TaskWorkerState>((set, get) => {
-  let workerInterval: NodeJS.Timeout | null = null;
+  let workerInterval: ReturnType<typeof setInterval> | null = null;
   const activeTaskIds = new Set<string>();
 
   return {
     tasks: [],
     isProcessing: false,
     concurrencyLimit: 2, // How many tasks to process simultaneously
-    apiUrl: 'http://127.0.0.1:3000/v1', // Default local AntiGravity proxy endpoint
-    setApiUrl: (url: string) => set({ apiUrl: url }),
 
-    addTask: (prompt, requiredModel) => {
+    addTask: (prompt, requiredModel, preferredAccountId) => {
       const newTask: Task = {
         id: crypto.randomUUID(),
         prompt,
         requiredModel,
         status: 'pending',
+        preferredAccountId,
         createdAt: Date.now(),
       };
       set((state) => ({ tasks: [...state.tasks, newTask] }));
@@ -136,17 +135,31 @@ export const useTaskWorkerStore = create<TaskWorkerState>((set, get) => {
       for (let i = 0; i < Math.min(availableSlots, pendingTasks.length); i++) {
         const task = pendingTasks[i];
         
-        // Find an account that has a model mimicking `requiredModel` with > 5% quota
-        let targetAccount = availableAccounts.find(acc => {
-          // If no detailed quota model, allow passing for the sake of task demonstration
-          if (!acc.quota || !acc.quota.models || acc.quota.models.length === 0) return true;
-          // Match by name or display name
-          return acc.quota.models.some(
-            m => (m.name.toLowerCase().includes(task.requiredModel.toLowerCase()) || 
-                  (m.display_name && m.display_name.toLowerCase().includes(task.requiredModel.toLowerCase()))) && 
-                  m.percentage > 0
-          );
-        });
+        let targetAccount: Account | undefined;
+        
+        if (task.preferredAccountId) {
+          // Look for it in the overall accounts to see if it's currently busy
+          const isBusy = busyAccountIds.has(task.preferredAccountId);
+          if (isBusy) {
+             // Wait for it to become available
+             continue;
+          }
+          targetAccount = availableAccounts.find(acc => acc.id === task.preferredAccountId);
+          if (!targetAccount) {
+            // Account might be disabled or forbidden, let's just wait or fail. We'll skip this round.
+            continue;
+          }
+        } else {
+          // If no specific account was mapped securely, check models
+          targetAccount = availableAccounts.find(acc => {
+            if (!acc.quota || !acc.quota.models || acc.quota.models.length === 0) return true;
+            return acc.quota.models.some(
+              m => (m.name.toLowerCase().includes(task.requiredModel.toLowerCase()) || 
+                    (m.display_name && m.display_name.toLowerCase().includes(task.requiredModel.toLowerCase()))) && 
+                    m.percentage > 0
+            );
+          });
+        }
 
         // Ultimate fallback to ensure tasks are processed if available accounts exist
         if (!targetAccount && availableAccounts.length > 0) {
@@ -172,7 +185,7 @@ export const useTaskWorkerStore = create<TaskWorkerState>((set, get) => {
           // Async Execute
           (async () => {
             try {
-              const result = await realAIApiCall(task.prompt, task.requiredModel, targetAccount, state.apiUrl);
+              const result = await realAIApiCall(task.prompt, task.requiredModel, targetAccount);
               
               // Success
               set((s) => ({
@@ -180,11 +193,16 @@ export const useTaskWorkerStore = create<TaskWorkerState>((set, get) => {
                   t.id === task.id ? { ...t, status: 'done', result, completedAt: Date.now() } : t
                 )
               }));
-            } catch (error: any) {
-              // Failed -> mark as failed (could implement retry logic here and set back to 'pending')
+            } catch (error: unknown) {
+              const errorMsg = error instanceof Error 
+                ? error.message 
+                : typeof error === 'string' 
+                  ? error 
+                  : JSON.stringify(error) || 'Unknown error during invoke';
+              // Failed -> mark as failed
               set((s) => ({
                 tasks: s.tasks.map((t) => 
-                  t.id === task.id ? { ...t, status: 'failed', error: error.message, completedAt: Date.now() } : t
+                  t.id === task.id ? { ...t, status: 'failed', error: errorMsg, completedAt: Date.now() } : t
                 )
               }));
               
